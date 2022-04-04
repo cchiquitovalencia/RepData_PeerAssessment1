@@ -5,21 +5,134 @@ output:
     keep_md: true
 ---
 
+```{r setup}
+library(tidyverse)
+library(knitr)
+
+opts_chunk$set(echo = TRUE)
+```
+
 
 ## Loading and preprocessing the data
+```{r}
+data <- read.csv("activity.csv") %>%
+        arrange(date, interval)
+head(data)
+```
 
 
 
 ## What is mean total number of steps taken per day?
+```{r}
+num_steps <- data %>%
+        group_by(date) %>%
+        summarise(num_steps = sum(steps, na.rm = TRUE))
+head(num_steps)
+```
 
+
+1. Make a histogram of the total number of steps taken each day
+```{r}
+num_steps %>% 
+        filter(num_steps > 0) %>%
+        ggplot(aes(num_steps))+
+        geom_histogram()+
+        labs(title = "Make a histogram of the total number of steps taken each day")
+```
+
+2. Calculate and report the mean and median total number of steps taken per day
+```{r}
+num_steps %>%
+        summarise(Mean = mean(num_steps, na.rm = TRUE),
+                  Median = median(num_steps, na.rm = TRUE))
+```
 
 
 ## What is the average daily activity pattern?
+
+1. Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+```{r}
+data %>%
+        group_by(interval) %>%
+        summarise(steps = mean(steps, na.rm = TRUE)) %>%
+        ggplot(aes(interval, steps))+
+        geom_line()+
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5))+
+        scale_x_continuous(breaks = c(seq(0,5000,by=50)))+
+        labs(title = "Make a time series plot of the 5-minute interval")
+```
+
+
+2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r}
+max_steps <- data %>%
+        group_by(interval) %>%
+        summarise(steps = mean(steps, na.rm = TRUE)) %>%
+        arrange(desc(steps))
+
+max_steps[1,]
+```
 
 
 
 ## Imputing missing values
 
+1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+```{r}
+sapply(data, function(x) sum(length(which(is.na(x)))))
+```
+
+2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+
+```{r}
+## Data missing goes equal to 0
+
+```
+
+3. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+```{r}
+missing_data <- data %>%
+        mutate(steps = ifelse(is.na(steps), 0, steps))
+
+missing_data
+```
+
+
+4. Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+```{r}
+miss_steps <- missing_data %>%
+        group_by(date) %>%
+        summarise(num_steps = sum(steps, na.rm = TRUE))
+
+miss_steps %>% 
+        #filter(num_steps > 0) %>%
+        ggplot(aes(num_steps))+
+        geom_histogram()+
+        labs(title = "Make a histogram of the total number of steps taken each day")
+```
+
+
+```{r}
+miss_steps %>%
+        summarise(Mean = mean(num_steps, na.rm = TRUE),
+                  Median = median(num_steps, na.rm = TRUE))
+```
+The strategy used has no impact on the total daily number of steps.
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+missing_data %>%
+        mutate(weekDay = weekdays(as.Date(date), abbreviate = TRUE),
+               type = ifelse(weekDay %in% c("Sat", "Sun"), "weekend", "weekday")) %>%
+        group_by(interval, type) %>%
+        summarise(steps = mean(steps, na.rm = TRUE)) %>%
+        ggplot(aes(interval, steps))+
+        geom_line(aes(col = type))+ 
+        facet_wrap(~ type, ncol = 1)+
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
+              legend.position = "none")+
+        scale_x_continuous(breaks = c(seq(0,5000,by=50)))+
+        labs(title = "Make a time series plot of the 5-minute interval")
+```
+
